@@ -22,9 +22,14 @@ def feature_extraction():
     lines_train = f_train.readlines()
     traindata = []
     duration_sum = [0, 0, 0]
-    count_3 = 0
-    count_4 = 0
-    count_5 = 0
+    count_3 = 0 # 100
+    count_4 = 0 # 100
+    count_5 = 0 # 100
+    wav_all = [[], [], []]
+    duration_all = [[], [], []]
+    zc_all = [[], [], []]
+    e_all = [[], [], []]
+    mfcc_all = [[], [], []]
 
     #### train / learning
     for line_train in lines_train:
@@ -49,15 +54,36 @@ def feature_extraction():
         # Find the short time energy.
         e = ste(x, scipy.signal.get_window("hamming", 500))
 
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
+        # mfcc.shape : ndarray 반환 으로 사용
+
+        # feature - length, zc, e, mfcc
         if int(syllable) == 3:
             count_3 += 1
             duration_sum[0] += y.size
+            zc_all[0].append(y)
+            duration_all[0].append(y.size)
+            zc_all[0].append(zc)
+            e_all[0].append(e)
+            mfcc_all[0].append(mfcc)
+
         if int(syllable) == 4:
             count_4 += 1
             duration_sum[1] += y.size
+            zc_all[1].append(y)
+            duration_all[1].append(y.size)
+            zc_all[1].append(zc)
+            e_all[1].append(e)
+            mfcc_all[1].append(mfcc)
+
         if int(syllable) == 5:
             count_5 += 1
             duration_sum[2] += y.size
+            zc_all[2].append(y)
+            duration_all[2].append(y.size)
+            zc_all[2].append(zc)
+            e_all[2].append(e)
+            mfcc_all[2].append(mfcc)
 
         # print("length: ", audio_length(fs, x))
         #print("zero crossing rate: ", zc.size, "\n", zc)
@@ -71,13 +97,20 @@ def feature_extraction():
         # zero_crossing_rate = librosa.feature.zero_crossing_rate(y)
         # print("zero: ", zero_crossing_rate)
 
-        
+        # peaks = librosa.util.peak_pick(energy_list,15,15,15,15,0.17,15)
+        # times = librosa.times_like(energy_list, sr=sr, hop_length=50)
+        # plt.plot(times, energy_list, alpha=0.8, label = 'peaks')
+        # plt.vlines(times[peaks], 0, energy_list.max(), color='r', alpha=0.8, label='Selected peaks')
+
         show_graph(file_dir, file_id, syllable, sr, y, zc, e)
 
     # print(lines)
     f_train.close()
     duration_avg =[duration_sum[0]/count_3, duration_sum[1]/count_4, duration_sum[2]/count_5]
-    print("duration_avg: ", duration_avg, "\n\n")
+    print("duration_avg: ", duration_avg)
+    print("duration_3: ", min(duration_all[0]), max(duration_all[0]))
+    print("duration_4: ", min(duration_all[1]), max(duration_all[1]))
+    print("duration_5: ", min(duration_all[2]), max(duration_all[2]), "\n\n")
     return duration_avg
 
     #### test
@@ -181,7 +214,7 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
     plt.show(block=False)
-    plt.pause(0.5)
+    plt.pause(0.1)
     plt.close()
 
 
