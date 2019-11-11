@@ -57,9 +57,9 @@ def feature_extraction():
 
         ## feature extraction from the test data
         # Find the short time zero crossing rate.
-        zc = stzcr(new_x, scipy.signal.get_window("boxcar", 500))
+        zc = stzcr(new_x, scipy.signal.get_window("boxcar", 2000))
         # Find the short time energy.
-        e = ste(new_x, scipy.signal.get_window("hamming", 500))
+        e = ste(new_x, scipy.signal.get_window("hamming", 2000))
         # mfcc.shape : ndarray 반환 으로 사용
         mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
@@ -143,9 +143,11 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
     lines_test = f_test.readlines()
     score = 0
     score2 = 0
+    score3 = 0
     total = 0 # 75 samples
     correct = ""
     correct2 = ""
+    correct3 = ""
 
     for line_test in lines_test:
         line_test = line_test.rstrip('\n')
@@ -166,9 +168,9 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
 
         ## feature extraction from the test data
         # Find the short time zero crossing rate.
-        zc = stzcr(x, scipy.signal.get_window("boxcar", 500))
+        zc = stzcr(x, scipy.signal.get_window("boxcar", 2000))
         # Find the short time energy.
-        e = ste(x, scipy.signal.get_window("hamming", 500))
+        e = ste(x, scipy.signal.get_window("hamming", 2000))
         # mfcc.shape : ndarray 반환 으로 사용
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
         parsed_length = speak_length(new_x)
@@ -194,10 +196,18 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
             score2 += 1
             correct2 = "correct"
         else: correct2 = "wrong"
-        total += 1
-        print("label:", syllable, "| index:", index+3, "| index2:", index2+3,"| ", correct, "| ", correct2, "\n")
 
-    print("Accuracy: ", score*100/total, score2*100/total, "%\n")
+        p_sum = [p3*p3_2, p4*p4_2, p5*p5_2]
+        index3 = p_sum.index(max(p_sum))
+        if(index3+3 == int(syllable)):
+            score3 += 1
+            correct3 = "correct"
+        else: correct3 = "wrong"
+
+        total += 1
+        print("label:", syllable, "| index:", index+3, "| index2:", index2+3,"| index3:", index3+3,"| ", correct, "| ", correct2, "| ", correct3, "\n")
+
+    print("Accuracy: ", score*100/total, score2*100/total, score3*100/total, "%\n")
 
 def paddding(y, x):
     if y.size < 28000:
@@ -289,8 +299,8 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
     ax3.set_xlabel("Time [s]") # x 축
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
-    #plt.show(block=False)
-    #plt.pause(0.1)
+    plt.show(block=False)
+    plt.pause(0.1)
     plt.close()
 
 
