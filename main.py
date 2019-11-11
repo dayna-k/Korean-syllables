@@ -31,6 +31,7 @@ def feature_extraction():
     count_5 = 0 # 100 samples
     wave_all = [[], [], []]
     duration_all = [[], [], []]
+    duration_parse_all = [[], [], []]
     zc_all = [[], [], []]
     e_all = [[], [], []]
     mfcc_all = [[], [], []]
@@ -62,11 +63,14 @@ def feature_extraction():
         # mfcc.shape : ndarray 반환 으로 사용
         mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
+        parsed_length = speak_length(new_x)
+
 
         # feature - length, zc, e, mfcc
         if int(syllable) == 3:
             count_3 += 1
             duration_all[0].append(y.size)
+            duration_parse_all[0].append(parsed_length)
             wave_all[0].append(new_y)
             zc_all[0].append(zc)
             e_all[0].append(e)
@@ -76,6 +80,7 @@ def feature_extraction():
         if int(syllable) == 4:
             count_4 += 1
             duration_all[1].append(y.size)
+            duration_parse_all[1].append(parsed_length)
             wave_all[1].append(new_y)
             zc_all[1].append(zc)
             e_all[1].append(e)
@@ -85,6 +90,7 @@ def feature_extraction():
         if int(syllable) == 5:
             count_5 += 1
             duration_all[2].append(y.size)
+            duration_parse_all[2].append(parsed_length)
             wave_all[2].append(new_y)
             zc_all[2].append(zc)
             e_all[2].append(e)
@@ -101,6 +107,8 @@ def feature_extraction():
     f_train.close()
     duration_avg = [np.mean(duration_all[0]), np.mean(duration_all[1]), np.mean(duration_all[2])]
     duration_var = [np.var(duration_all[0]), np.var(duration_all[1]), np.var(duration_all[2])] # 분산
+    duration_parse_avg = [np.mean(duration_parse_all[0]), np.mean(duration_parse_all[1]), np.mean(duration_parse_all[2])]
+    duration_parse_var = [np.var(duration_parse_all[0]), np.var(duration_parse_all[1]), np.var(duration_parse_all[2])] # 분산
     # length_avg = [np.mean(length_all[0]), np.mean(length_all[1]), np.mean(length_all[2])]
     # length_var = [np.var(length_all[0]), np.var(length_all[1]), np.var(length_all[2])]
 
@@ -109,6 +117,12 @@ def feature_extraction():
     print("duration_3: ", min(duration_all[0]), max(duration_all[0]))
     print("duration_4: ", min(duration_all[1]), max(duration_all[1]))
     print("duration_5: ", min(duration_all[2]), max(duration_all[2]), "\n")
+
+    print("duration_parse_avg: ", duration_parse_avg)
+    print("duration_parse_var: ", duration_parse_var)
+    print("duration_parse_3: ", min(duration_parse_all[0]), max(duration_parse_all[0]))
+    print("duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
+    print("duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
     # print("length_avg: ", length_avg)
     # print("length_var: ", length_var)
     # print("length_3: ", min(length_all[0]), max(length_all[0]))
@@ -120,17 +134,18 @@ def feature_extraction():
     # sns.distplot(duration_all[0], rug=True, kde=False, fit=sp.stats.norm)
     # plt.show()
 
-    return duration_avg, duration_var
+    return duration_avg, duration_var, duration_parse_avg, duration_parse_var
 
 
-def classify(duration_avg, duration_var):
+def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var):
     DATA_PATH = "./PA1_DB/"
     f_test = open(DATA_PATH+"test.txt", 'r')
     lines_test = f_test.readlines()
     score = 0
-    # score2 = 0
+    score2 = 0
     total = 0 # 75 samples
     correct = ""
+    correct2 = ""
 
     for line_test in lines_test:
         line_test = line_test.rstrip('\n')
@@ -156,6 +171,7 @@ def classify(duration_avg, duration_var):
         e = ste(x, scipy.signal.get_window("hamming", 500))
         # mfcc.shape : ndarray 반환 으로 사용
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
+        parsed_length = speak_length(new_x)
 
         # length_dif = [abs(duration_avg[0]-y.size), abs(duration_avg[1]-y.size), abs(duration_avg[2]-y.size)]
         # index = length_dif.index(min(length_dif))
@@ -169,17 +185,19 @@ def classify(duration_avg, duration_var):
             correct = "correct"
         else: correct = "wrong"
 
-        # p3_2 = normalizing(l, length_avg[0], length_var[0])
-        # p4_2 = normalizing(l, length_avg[1], length_var[1])
-        # p5_2 = normalizing(l, length_avg[2], length_var[2])
-        # p_length2 = [p3_2, p4_2, p5_2]
-        # index2 = p_length2.index(max(p_length2))
-        # if(index2+3 == int(syllable)):
-        #     score2 += 1
+        p3_2 = normalizing(parsed_length, duration_parse_avg[0], duration_parse_var[0])
+        p4_2 = normalizing(parsed_length, duration_parse_avg[1], duration_parse_var[1])
+        p5_2 = normalizing(parsed_length, duration_parse_avg[2], duration_parse_var[2])
+        p_length2 = [p3_2, p4_2, p5_2]
+        index2 = p_length2.index(max(p_length2))
+        if(index2+3 == int(syllable)):
+            score2 += 1
+            correct2 = "correct"
+        else: correct2 = "wrong"
         total += 1
-        print("label:", syllable, "| index:", index+3, "| ", correct,"\n")
+        print("label:", syllable, "| index:", index+3, "| index2:", index2+3,"| ", correct, "| ", correct2, "\n")
 
-    print("Accuracy: ", score*100/total, "%\n")
+    print("Accuracy: ", score*100/total, score2*100/total, "%\n")
 
 def paddding(y, x):
     if y.size < 28000:
@@ -193,6 +211,17 @@ def paddding(y, x):
         #print(new_x, type(new_x), new_x.shape)
         #print("zero-padding")
         return new_y, new_x
+
+def speak_length(x):
+    start = 0
+    end = 28000
+    for i in range(x.size):
+        if x[i] > 1000:
+            if start == 0:
+                start = i
+            else:
+                end = i
+    return end - start
 
 def audio_length(fs, x):
     """Length of the audio source (sec)"""
@@ -260,13 +289,13 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
     ax3.set_xlabel("Time [s]") # x 축
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
-    plt.show(block=False)
-    plt.pause(0.1)
+    #plt.show(block=False)
+    #plt.pause(0.1)
     plt.close()
 
 
 
 if __name__ == '__main__':
-    duration_avg, duration_var = feature_extraction()
-    classify(duration_avg, duration_var)
+    duration_avg, duration_var, duration_parse_avg, duration_parse_var = feature_extraction()
+    classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
     print("PA1 End")
