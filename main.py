@@ -26,19 +26,15 @@ def feature_extraction():
 
     # duration_sum = [0, 0, 0]
     # length_sum = [0, 0, 0]
-
     count_3 = 0 # 100 samples
     count_4 = 0 # 100 samples
     count_5 = 0 # 100 samples
-    wav_all = [[], [], []]
+    wave_all = [[], [], []]
     duration_all = [[], [], []]
     zc_all = [[], [], []]
     e_all = [[], [], []]
     mfcc_all = [[], [], []]
     length_all = [[], [], []]
-
-
-
 
     #### train / learning
     for line_train in lines_train:
@@ -51,25 +47,27 @@ def feature_extraction():
 
         y, sr = librosa.load(DATA_PATH+line_train, sr=16000) # sr = 16000
         fs, x = wavfile.read(DATA_PATH+line_train) # fs = 16000
+        l = audio_length(fs, x)
 
         x = np.array(x, dtype = float)
         t = np.arange(len(x)) * (1.0 / fs)
         #print(y, sr, fs, x)
+        new_y, new_x = paddding(y, x)
 
+        ## feature extraction from the test data
         # Find the short time zero crossing rate.
-        zc = stzcr(x, scipy.signal.get_window("boxcar", 500))
+        zc = stzcr(new_x, scipy.signal.get_window("boxcar", 500))
         # Find the short time energy.
-        e = ste(x, scipy.signal.get_window("hamming", 500))
+        e = ste(new_x, scipy.signal.get_window("hamming", 500))
         # mfcc.shape : ndarray 반환 으로 사용
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
-        l = audio_length(fs, x)
+        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
 
         # feature - length, zc, e, mfcc
         if int(syllable) == 3:
             count_3 += 1
             duration_all[0].append(y.size)
-            zc_all[0].append(y)
+            wave_all[0].append(new_y)
             zc_all[0].append(zc)
             e_all[0].append(e)
             mfcc_all[0].append(mfcc)
@@ -78,7 +76,7 @@ def feature_extraction():
         if int(syllable) == 4:
             count_4 += 1
             duration_all[1].append(y.size)
-            zc_all[1].append(y)
+            wave_all[1].append(new_y)
             zc_all[1].append(zc)
             e_all[1].append(e)
             mfcc_all[1].append(mfcc)
@@ -87,7 +85,7 @@ def feature_extraction():
         if int(syllable) == 5:
             count_5 += 1
             duration_all[2].append(y.size)
-            zc_all[2].append(y)
+            wave_all[2].append(new_y)
             zc_all[2].append(zc)
             e_all[2].append(e)
             mfcc_all[2].append(mfcc)
@@ -97,7 +95,7 @@ def feature_extraction():
         # print("zero crossing rate: ", zc.size, "\n", zc)
         # print("short-time energy: ", e.size, "\n", e)
         # print("length: ", audio_length(fs, x), y.size, "\n") # audio_length(fs, x) / y.size : constant -> 둘 중 아무거나 선택
-        show_graph(file_dir, file_id, syllable, sr, y, zc, e)
+        show_graph(file_dir, file_id, syllable, sr, new_y, zc, e)
 
     # print(lines)
     f_train.close()
@@ -145,15 +143,19 @@ def classify(duration_avg, duration_var):
 
         y, sr = librosa.load(DATA_PATH+line_test, sr=16000) # sr = 16000
         fs, x = wavfile.read(DATA_PATH+line_test) # fs = 16000
+        l = audio_length(fs, x)
 
-        # feature extraction from the test data
         x = np.array(x, dtype = float)
         t = np.arange(len(x)) * (1.0 / fs)
+        new_y, new_x = paddding(y, x)
+
+        ## feature extraction from the test data
         # Find the short time zero crossing rate.
         zc = stzcr(x, scipy.signal.get_window("boxcar", 500))
         # Find the short time energy.
         e = ste(x, scipy.signal.get_window("hamming", 500))
-        l = audio_length(fs, x)
+        # mfcc.shape : ndarray 반환 으로 사용
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
         # length_dif = [abs(duration_avg[0]-y.size), abs(duration_avg[1]-y.size), abs(duration_avg[2]-y.size)]
         # index = length_dif.index(min(length_dif))
@@ -179,9 +181,18 @@ def classify(duration_avg, duration_var):
 
     print("Accuracy: ", score*100/total, "%\n")
 
-def paddding():
-    pass
+def paddding(y, x):
+    if y.size < 28000:
+        n_minus_y = 28000 - y.size
+        # print(n_minus_y, type(y), y[0])
+        new_y = [0]*(n_minus_y//2) + list(y) + [0]*(28000 - y.size - n_minus_y//2)
+        new_y = np.array(new_y)
 
+        new_x = [0]*(n_minus_y//2) + list(x) + [0]*(28000 - y.size - n_minus_y//2)
+        new_x = np.array(new_x)
+        #print(new_x, type(new_x), new_x.shape)
+        #print("zero-padding")
+        return new_y, new_x
 
 def audio_length(fs, x):
     """Length of the audio source (sec)"""
@@ -249,8 +260,8 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
     ax3.set_xlabel("Time [s]") # x 축
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
-    #plt.show(block=False)
-    #plt.pause(0.1)
+    plt.show(block=False)
+    plt.pause(0.1)
     plt.close()
 
 
