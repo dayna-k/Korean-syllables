@@ -36,6 +36,9 @@ def feature_extraction():
     e_all = [[], [], []]
     mfcc_all = [[], [], []]
     length_all = [[], [], []]
+    onset_r_all = [[], [], []]
+    onset_f_all = [[], [], []]
+    onset_all = [[], [], []]
 
     #### train / learning
     for line_train in lines_train:
@@ -81,6 +84,10 @@ def feature_extraction():
             e_all[0].append(e)
             mfcc_all[0].append(mfcc)
             length_all[0].append(l)
+            onset_r_all[0].append(onset_raw.size)
+            onset_f_all[0].append(onset_frames.size)
+            onset_all[0].append(onset_raw.size + onset_frames.size)
+
 
         if int(syllable) == 4:
             count_4 += 1
@@ -91,6 +98,9 @@ def feature_extraction():
             e_all[1].append(e)
             mfcc_all[1].append(mfcc)
             length_all[1].append(l)
+            onset_r_all[1].append(onset_raw.size)
+            onset_f_all[1].append(onset_frames.size)
+            onset_all[1].append(onset_raw.size + onset_frames.size)
 
         if int(syllable) == 5:
             count_5 += 1
@@ -101,6 +111,9 @@ def feature_extraction():
             e_all[2].append(e)
             mfcc_all[2].append(mfcc)
             length_all[2].append(l)
+            onset_r_all[2].append(onset_raw.size)
+            onset_f_all[2].append(onset_frames.size)
+            onset_all[2].append(onset_raw.size + onset_frames.size)
 
         # print("length: ", audio_length(fs, x))
         # print("zero crossing rate: ", zc.size, "\n", zc)
@@ -116,6 +129,13 @@ def feature_extraction():
     duration_parse_var = [np.var(duration_parse_all[0]), np.var(duration_parse_all[1]), np.var(duration_parse_all[2])] # 분산
     # length_avg = [np.mean(length_all[0]), np.mean(length_all[1]), np.mean(length_all[2])]
     # length_var = [np.var(length_all[0]), np.var(length_all[1]), np.var(length_all[2])]
+    onset_r_avg = [np.mean(onset_r_all[0]), np.mean(onset_r_all[1]), np.mean(onset_r_all[2])]
+    onset_r_var = [np.var(onset_r_all[0]), np.var(onset_r_all[1]), np.var(onset_r_all[2])]
+    onset_f_avg = [np.mean(onset_f_all[0]), np.mean(onset_f_all[1]), np.mean(onset_f_all[2])]
+    onset_f_var = [np.var(onset_f_all[0]), np.var(onset_f_all[1]), np.var(onset_f_all[2])]
+    onset_avg = [np.mean(onset_all[0]), np.mean(onset_all[1]), np.mean(onset_all[2])]
+    onset_var = [np.var(onset_all[0]), np.var(onset_all[1]), np.var(onset_all[2])]
+
 
     print("duration_avg: ", duration_avg)
     print("duration_var: ", duration_var)
@@ -128,6 +148,24 @@ def feature_extraction():
     print("duration_parse_3: ", min(duration_parse_all[0]), max(duration_parse_all[0]))
     print("duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
     print("duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
+
+    print("onset_r_avg: ", onset_r_avg)
+    print("onset_r_var: ", onset_r_var)
+    print("onset_r_3: ", min(onset_r_all[0]), max(onset_r_all[0]))
+    print("onset_r_4: ", min(onset_r_all[1]), max(onset_r_all[1]))
+    print("onset_r_5: ", min(onset_r_all[2]), max(onset_r_all[2]), "\n")
+
+    print("onset_f_avg: ", onset_f_avg)
+    print("onset_f_var: ", onset_f_var)
+    print("onset_f_3: ", min(onset_f_all[0]), max(onset_f_all[0]))
+    print("onset_f_4: ", min(onset_f_all[1]), max(onset_f_all[1]))
+    print("onset_f_5: ", min(onset_f_all[2]), max(onset_f_all[2]), "\n")
+
+    print("onset_avg: ", onset_avg)
+    print("onset_var: ", onset_var)
+    print("onset_3: ", min(onset_all[0]), max(onset_all[0]))
+    print("onset_4: ", min(onset_all[1]), max(onset_all[1]))
+    print("onset_5: ", min(onset_all[2]), max(onset_all[2]), "\n")
     # print("length_avg: ", length_avg)
     # print("length_var: ", length_var)
     # print("length_3: ", min(length_all[0]), max(length_all[0]))
@@ -139,20 +177,19 @@ def feature_extraction():
     # sns.distplot(duration_all[0], rug=True, kde=False, fit=sp.stats.norm)
     # plt.show()
 
-    return duration_avg, duration_var, duration_parse_avg, duration_parse_var
+    return duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var
 
 
-def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var):
+def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var):
     DATA_PATH = "./PA1_DB/"
     f_test = open(DATA_PATH+"test.txt", 'r')
     lines_test = f_test.readlines()
-    score = 0
-    score2 = 0
-    score3 = 0
+    score1, score2, score3, score4, score5 = 0, 0, 0, 0, 0
+    score12, score14, score15 = 0, 0, 0
     total = 0 # 75 samples
-    correct = ""
-    correct2 = ""
-    correct3 = ""
+    correct1, correct2, correct3, correct4, correct5 = "", "", "", "", ""
+    correct12, correct14, correct15 = "", "", ""
+
 
     for line_test in lines_test:
         line_test = line_test.rstrip('\n')
@@ -192,34 +229,132 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
         p3 = normalizing(y.size, duration_avg[0], duration_var[0])
         p4 = normalizing(y.size, duration_avg[1], duration_var[1])
         p5 = normalizing(y.size, duration_avg[2], duration_var[2])
-        p_length = [p3, p4, p5] # probability
-        index = p_length.index(max(p_length))
-        if(index+3 == int(syllable)):
-            score += 1
-            correct = "correct"
-        else: correct = "wrong"
+        a, b, c = prob_norm(p3, p4, p5)
+        p_length = [a, b, c] # probability
+        index1 = p_length.index(max(p_length))
+        print("p1: ", index1, max(p_length), p_length)
+        if(index1+3 == int(syllable)):
+            score1 += 1
+            correct1 = "correct"
+        else: correct1 = " wrong "
 
         p3_2 = normalizing(parsed_length, duration_parse_avg[0], duration_parse_var[0])
         p4_2 = normalizing(parsed_length, duration_parse_avg[1], duration_parse_var[1])
         p5_2 = normalizing(parsed_length, duration_parse_avg[2], duration_parse_var[2])
-        p_length2 = [p3_2, p4_2, p5_2]
+        a, b, c = prob_norm(p3_2, p4_2, p5_2)
+        p_length2 = [a, b, c]
         index2 = p_length2.index(max(p_length2))
+        print("p2: ", index2, max(p_length2), p_length2)
         if(index2+3 == int(syllable)):
             score2 += 1
             correct2 = "correct"
-        else: correct2 = "wrong"
+        else: correct2 = " wrong "
 
-        p_sum = [p3*p3_2, p4*p4_2, p5*p5_2]
-        index3 = p_sum.index(max(p_sum))
+        p3_3 = normalizing(onset_raw.size, onset_r_avg[0], onset_r_var[0])
+        p4_3 = normalizing(onset_raw.size, onset_r_avg[1], onset_r_var[1])
+        p5_3 = normalizing(onset_raw.size, onset_r_avg[2], onset_r_var[2])
+        a, b, c = prob_norm(p3_3, p4_3, p5_3)
+        p_3 = [a, b, c] # probability
+        index3 = p_3.index(max(p_3))
+        print("p3: ", index3, max(p_3), p_3)
         if(index3+3 == int(syllable)):
             score3 += 1
             correct3 = "correct"
-        else: correct3 = "wrong"
+        else: correct3 = " wrong "
+
+        p3_4 = normalizing(onset_frames.size, onset_f_avg[0], onset_f_var[0])
+        p4_4 = normalizing(onset_frames.size, onset_f_avg[1], onset_f_var[1])
+        p5_4 = normalizing(onset_frames.size, onset_f_avg[2], onset_f_var[2])
+        a, b, c = prob_norm(p3_4, p4_4, p5_4)
+        p_4 = [a, b, c] # probability
+        #print("p4: ", p_4)
+        index4 = p_4.index(max(p_4))
+        if(index4+3 == int(syllable)):
+            score4 += 1
+            correct4 = "correct"
+        else: correct4 = " wrong "
+
+        p3_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[0], onset_var[0])
+        p4_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[1], onset_var[1])
+        p5_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[2], onset_var[2])
+        a, b, c = prob_norm(p3_5, p4_5, p5_5)
+        p_5 = [a, b, c] # probability
+        #print("p5: ", p_5)
+        index5 = p_5.index(max(p_5))
+        if(index5+3 == int(syllable)):
+            score5 += 1
+            correct5 = "correct"
+        else: correct5 = " wrong "
+
+
+        # final control
+        # if index1 == index2:
+        #     index12 = index1
+        #     if index3 == index5 and index4 == index5:
+        #         index12 = (index1+index2+index3+index4)//4
+        # else:
+        #     index12 = (index1+index2+index3)//3
+        #
+        # # set outliers
+        # if ((len(list(onset_raw)) == 1 or len(list(onset_frames)) == 2) or len(list(onset_raw)) + len(list(onset_frames)) <= 4):
+        #     index12 = 0
+        #
+        # if (len(list(onset_frames)) >= 11 or len(list(onset_raw)) + len(list(onset_frames)) >= 16):
+        #     index12 = 2
+
+        p_final = [p_length2[0]*p_3[0], p_length2[1]*p_3[1], p_length2[2]*p_3[2]]
+        index12 = p_final.index(max(p_final))
+
+
+
+        # if (index1 < index3):
+        #     index12 = (index1+index3)//2
+        # if (index1 != index3):
+        #     if max(max(p_length2), max(p_3)) > 0.8:
+        #         if max(p_length2) > max(p_3):
+        #             index12 = index2
+        #         else:
+        #             index12 = index1
+
+        if ((len(list(onset_raw)) == 1 or len(list(onset_frames)) == 2) or len(list(onset_raw)) + len(list(onset_frames)) <= 4):
+            index12 = 0
+
+        if (len(list(onset_frames)) >= 11 or len(list(onset_raw)) + len(list(onset_frames)) >= 16):
+            index12 = 2
+        # if (index2 != index3)
+
+        if(index12+3 == int(syllable)):
+            score12 += 1
+            correct12 = "correct"
+        else: correct12 = " wrong "
+        # if index1 == index2:
+        #     index12 = index1
+        # if index3 == index4:
+        #     index34 = index2
+        #
+        # if index12 != 0 :
+        #     index_a = index12
+        # elif index34 != 0:
+
+
+        # p_sum = [p3*p3_2, p4*p4_2, p5*p5_2]
+        # index3 = p_sum.index(max(p_sum))
+        # if(index3+3 == int(syllable)):
+        #     score3 += 1
+        #     correct3 = "correct"
+        # else: correct3 = "wrong"
 
         total += 1
-        print("label:", syllable, "| index:", index+3, "| index2:", index2+3,"| index3:", index3+3,"| ", correct, "| ", correct2, "| ", correct3, "\n")
+        print("label:", syllable, "| index1:", index1+3, "| index2:", index2+3,"| index3:", index3+3, "| index12:", index12+3)
+        # "| index4:", index4+3, "| index5:", index5+3, "| index12:", index12+3)
+        print("label:", syllable, "| ", correct1, " | ", correct2, " | ", correct3, " | ", correct12,"\n")
+        # correct4, "| ", correct5, "| ",
 
-    print("Accuracy: ", score*100/total, score2*100/total, score3*100/total, "%\n")
+    print("Accuracy: ", score1*100/total, score2*100/total, score3*100/total, score4*100/total, score5*100/total, score12*100/total,"\n")
+
+def prob_norm(p1, p2, p3):
+    sum = p1 + p2 + p3
+    return p1/sum, p2/sum, p3/sum
 
 def paddding(y, x):
     if y.size < 28000:
@@ -318,6 +453,6 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
 
 
 if __name__ == '__main__':
-    duration_avg, duration_var, duration_parse_avg, duration_parse_var = feature_extraction()
-    classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
+    duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var = feature_extraction()
+    classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var)
     print("PA1 End")
