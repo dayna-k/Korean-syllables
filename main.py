@@ -5,46 +5,49 @@ import os, librosa, scipy, shutil, math, statistics
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
-# from scipy.stats import norm
 
-# from numpy import *
-# from librosa import *
 
-# feature: length, pitch
 n_window = 1000
+
+
+#################################################################
+##   Training Fuction; Feature Extraction
+##   - Features
+##       1) Overall Waveform
+##       2) Duration (#Frames)
+##       3) Parsed Duration with Energy (#Frames) (*)
+##       4) Zero-Crossing Rate: Waveform & Peaks
+##       5) Short Time Energy : Waveform & Peaks (*)
+##       6) MFCC
+##      (*) Are Used for Classification
+#################################################################
 def feature_extraction():
-    ## train
+
     DATA_PATH = "./PA1_DB/"
     if os.path.isdir("./img/"):
         shutil.rmtree("./img/")
     os.mkdir("./img/")
-    # f_train = open(DATA_PATH+"train.txt", 'r')
 
-    ## train
     f_train = open(DATA_PATH+"train.txt", 'r')
     lines_train = f_train.readlines()
-    traindata = []
 
-    # duration_sum = [0, 0, 0]
-    # length_sum = [0, 0, 0]
-    count_3 = 0 # 100 samples
-    count_4 = 0 # 100 samples
-    count_5 = 0 # 100 samples
+    # Variables
+    count_3, count_4, count_5 = 0, 0, 0 # 100 Samples
     wave_all = [[], [], []]
     duration_all = [[], [], []]
     duration_parse_all = [[], [], []]
     zc_all = [[], [], []]
-    e_all = [[], [], []]
-    mfcc_all = [[], [], []]
     zc_peak_dif_all = [[], [], []]
+    e_all = [[], [], []]
     e_peak_dif_all = [[], [], []]
+    mfcc_all = [[], [], []]
 
-    #### train / learning
+    ## File Iteration
     for line_train in lines_train:
         line_train = line_train.rstrip('\n')
         print("Training: ", line_train)
 
-        # if line_train == "train/5syllables/99_mu-yeok-dae-pyo-bu/0024_099.wav": # last file
+        ## ex) line_train == "train/5syllables/99_mu-yeok-dae-pyo-bu/0024_099.wav": # last file
         (file_dir, file_id) = os.path.split(line_train)
         syllable = label_parse(file_dir)
 
@@ -56,19 +59,15 @@ def feature_extraction():
         t = np.arange(len(x)) * (1.0 / fs)
         new_y, new_x = paddding(y, x)
 
-
-        ## feature extraction from the train data
+        ## Feature Extraction from the Train Data
         zc = stzcr(new_x, scipy.signal.get_window("boxcar", n_window)) # Find the short time zero crossing rate.
-        e = ste(new_x, scipy.signal.get_window("hamming", n_window)) # Find the short time energy.
-        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho') # mfcc.shape : ndarray 반환 으로 사용
-
-        parsed_length = speak_length(e)
         zc_peak_dif = librosa.util.peak_pick(zc, 15, 15, 15, 15, 0.0025, 10)
-        # print(zc_peak_dif, list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
+        e = ste(new_x, scipy.signal.get_window("hamming", n_window)) # Find the short time energy.
         e_peak_dif = librosa.util.peak_pick(e, 15, 15, 15, 15, 0.1, 15)
-        #print(e_peak_dif)
+        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho') # mfcc.shape : ndarray 반환 으로 사용 -> since spectrum, didn't used
+        parsed_length = speak_length(e)
 
-        # feature: length, zc, e, mfcc
+        ## Save data(features) based on the label(class)
         if int(syllable) == 3:
             count_3 += 1
             duration_all[0].append(y.size)
@@ -102,10 +101,9 @@ def feature_extraction():
             zc_peak_dif_all[2].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
             e_peak_dif_all[2].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
 
-        # print("length: ", audio_length(fs, x), y.size, "\n") # audio_length(fs, x) / y.size : constant -> 둘 중 아무거나 선택
         show_graph(file_dir, file_id, syllable, sr, new_y, zc, e)
-
     f_train.close()
+
     duration_avg = [np.mean(duration_all[0]), np.mean(duration_all[1]), np.mean(duration_all[2])]
     duration_var = [np.var(duration_all[0]), np.var(duration_all[1]), np.var(duration_all[2])] # 분산
     duration_parse_avg = [np.mean(duration_parse_all[0]), np.mean(duration_parse_all[1]), np.mean(duration_parse_all[2])]
@@ -115,12 +113,13 @@ def feature_extraction():
     e_peak_dif_avg = [np.mean(e_peak_dif_all[0]), np.mean(e_peak_dif_all[1]), np.mean(e_peak_dif_all[2])]
     e_peak_dif_var = [np.var(e_peak_dif_all[0]), np.var(e_peak_dif_all[1]), np.var(e_peak_dif_all[2])]
 
-
-    print("duration_avg: ", duration_avg)
-    print("duration_var: ", duration_var)
-    print("duration_3: ", min(duration_all[0]), max(duration_all[0]))
-    print("duration_4: ", min(duration_all[1]), max(duration_all[1]))
-    print("duration_5: ", min(duration_all[2]), max(duration_all[2]), "\n")
+    print("\n\n\n###########################################################")
+    print("################ Feature Extraction Result ################\n")
+    # print("duration_avg: ", duration_avg)
+    # print("duration_var: ", duration_var)
+    # print("duration_3: ", min(duration_all[0]), max(duration_all[0]))
+    # print("duration_4: ", min(duration_all[1]), max(duration_all[1]))
+    # print("duration_5: ", min(duration_all[2]), max(duration_all[2]), "\n")
 
     print("duration_parse_avg: ", duration_parse_avg)
     print("duration_parse_var: ", duration_parse_var)
@@ -128,17 +127,19 @@ def feature_extraction():
     print("duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
     print("duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
 
-    print("zc_peak_dif_avg: ", zc_peak_dif_avg)
-    print("zc_peak_dif_var: ", zc_peak_dif_var)
-    print("zc_peak_dif_3: ", min(zc_peak_dif_all[0]), max(zc_peak_dif_all[0]))
-    print("zc_peak_dif_4: ", min(zc_peak_dif_all[1]), max(zc_peak_dif_all[1]))
-    print("zc_peak_dif_5: ", min(zc_peak_dif_all[2]), max(zc_peak_dif_all[2]), "\n")
+    # print("zc_peak_dif_avg: ", zc_peak_dif_avg)
+    # print("zc_peak_dif_var: ", zc_peak_dif_var)
+    # print("zc_peak_dif_3: ", min(zc_peak_dif_all[0]), max(zc_peak_dif_all[0]))
+    # print("zc_peak_dif_4: ", min(zc_peak_dif_all[1]), max(zc_peak_dif_all[1]))
+    # print("zc_peak_dif_5: ", min(zc_peak_dif_all[2]), max(zc_peak_dif_all[2]), "\n")
 
     print("e_peak_dif_avg: ", e_peak_dif_avg)
     print("e_peak_dif_var: ", e_peak_dif_var)
     print("e_peak_dif_3: ", min(e_peak_dif_all[0]), max(e_peak_dif_all[0]))
     print("e_peak_dif_4: ", min(e_peak_dif_all[1]), max(e_peak_dif_all[1]))
     print("e_peak_dif_5: ", min(e_peak_dif_all[2]), max(e_peak_dif_all[2]), "\n")
+
+    print("###########################################################\n\n\n")
 
     # show the distribution histogram of duration
     # plt.hist(duration_all[0], bins=20)
@@ -148,24 +149,36 @@ def feature_extraction():
     return duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var
 
 
+
+
+#################################################################
+##   Testing Fuction; Classification
+##   - Extract Features from the Test Data
+##   - Using Above Features 3) and 5), Classify the Data
+#################################################################
 def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var):
+
     DATA_PATH = "./PA1_DB/"
     f_test = open(DATA_PATH+"test.txt", 'r')
     lines_test = f_test.readlines()
+
+    # Variables
     score1, score2, score3, score4, score5 = 0, 0, 0, 0, 0
+    score2_3, score2_4, score2_5 = 0, 0, 0
+    score4_3, score4_4, score4_5 = 0, 0, 0
+
     score_a, score_b = 0, 0
-    total = 0 # 75 samples
+    score_b_3, score_b_4, score_b_5 = 0, 0, 0
+    total = 0 # 75 Samples
     correct1, correct2, correct3, correct4, correct5 = "", "", "", "", ""
     correct_a, correct_b = "", ""
 
-
+    ## File Iteration
     for line_test in lines_test:
         line_test = line_test.rstrip('\n')
         print("Testing: ", line_test)
 
         (file_dir, file_id) = os.path.split(line_test)
-        # print("file_dir: ", file_dir)
-        # print("file_id: ", file_id)
         syllable = label_parse(file_dir)
 
         y, sr = librosa.load(DATA_PATH+line_test, sr=16000) # sr = 16000
@@ -176,33 +189,36 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         t = np.arange(len(x)) * (1.0 / fs)
         new_y, new_x = paddding(y, x)
 
-        ## feature extraction from the test data
-        # Find the short time zero crossing rate.
-        zc = stzcr(new_x, scipy.signal.get_window("boxcar", n_window))
-        # Find the short time energy.
-        e = ste(new_x, scipy.signal.get_window("hamming", n_window))
-        # mfcc.shape : ndarray 반환 으로 사용
-        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
-        parsed_length = speak_length(e)
-
-        # zc_peak_dif = librosa.util.peak_pick(zc, 15, 15, 15, 15, 0.0025, 10)
-        # print("zc_peak_dif: ", zc_peak_dif, zc_peak_dif.size, list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
-
+        ## Feature Extraction from the Test Data
+        zc = stzcr(new_x, scipy.signal.get_window("boxcar", n_window)) # Find the short time zero crossing rate.
+        # zc_peak_dif = librosa.util.peak_pick(zc, 15, 15, 15, 15, 0.0025, 10) # removed
+        e = ste(new_x, scipy.signal.get_window("hamming", n_window)) # Find the short time energy.
         e_peak_dif = librosa.util.peak_pick(e, 15, 15, 15, 15, 0.1, 15)
+        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho') # mfcc.shape : ndarray 반환 으로 사용
+        parsed_length = speak_length(e)
+        # print("zc_peak_dif: ", zc_peak_dif, zc_peak_dif.size, list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
         # print("e_peak_dif: ", e_peak_dif, e_peak_dif.size, list(e_peak_dif)[-1]-list(e_peak_dif)[0])
 
+        ## Feature Extraction from the Test Data & Classifiaction
+        ## - Make Gaussian Distribution with Mean and Variance
+        ## - Normalize Probability to Make Sum as 1
+        ## - Assign Class with maximum Probability
+        ## - Check Correct/Wrong
+
+        ## Feature 2) Duration (#Frames) (Not Used)
         p3 = normalizing(y.size, duration_avg[0], duration_var[0])
         p4 = normalizing(y.size, duration_avg[1], duration_var[1])
         p5 = normalizing(y.size, duration_avg[2], duration_var[2])
         a, b, c = prob_norm(p3, p4, p5)
         p_length = [a, b, c] # probability
         index1 = p_length.index(max(p_length))
-        print("p1: ", index1+3, max(p_length), p_length)
+        # print("p1: ", index1+3, max(p_length), p_length)
         if(index1+3 == int(syllable)):
             score1 += 1
             correct1 = "correct"
         else: correct1 = " wrong "
 
+        ## Feature 3) Parsed Duration with Energy (#Frames) (*)
         p3_2 = normalizing(parsed_length, duration_parse_avg[0], duration_parse_var[0])
         p4_2 = normalizing(parsed_length, duration_parse_avg[1], duration_parse_var[1])
         p5_2 = normalizing(parsed_length, duration_parse_avg[2], duration_parse_var[2])
@@ -213,8 +229,12 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         if(index2+3 == int(syllable)):
             score2 += 1
             correct2 = "correct"
+            if index2 == 0: score2_3 += 1
+            elif index2 == 1: score2_4 += 1
+            else: score2_5 += 1
         else: correct2 = " wrong "
 
+        ## Feature 4) Zero-Crossing Rate: Peaks (Not Used)
         # p3_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[0], zc_peak_dif_var[0])
         # p4_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[1], zc_peak_dif_var[1])
         # p5_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[2], zc_peak_dif_var[2])
@@ -227,6 +247,7 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         #     correct3 = "correct"
         # else: correct3 = " wrong "
 
+        ## Feature 4) Short Time Energy: Peaks  (*)
         p3_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[0], e_peak_dif_var[0])
         p4_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[1], e_peak_dif_var[1])
         p5_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[2], e_peak_dif_var[2])
@@ -237,8 +258,12 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         if(index4+3 == int(syllable)):
             score4 += 1
             correct4 = "correct"
+            if index4 == 0: score4_3 += 1
+            elif index4 == 1: score4_4 += 1
+            else: score4_5 += 1
         else: correct4 = " wrong "
 
+        ## Combination of Feature 3) and 4) - Ver.1 (Not Used)
         p_final = [p_length2[0]*p_4[0], p_length2[1]*p_4[1], p_length2[2]*p_4[2]]
         index_a = p_final.index(max(p_final))
         if(index_a+3 == int(syllable)):
@@ -246,6 +271,7 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
             correct_a = "correct"
         else: correct_a = " wrong "
 
+        ## Combination of Feature 3) and 4) - Ver.2 (*)
         if index2 == index4:
             index_b = index2
         else:
@@ -256,18 +282,38 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         if(index_b+3 == int(syllable)):
             score_b += 1
             correct_b = "correct"
+            if index_b == 0: score_b_3 += 1
+            elif index_b == 1: score_b_4 += 1
+            else: score_b_5 += 1
         else: correct_b = " wrong "
-        
-        total += 1
-        print("label:", syllable, "| index1:", index1+3, "| index2:", index2+3, "| index4:", index4+3, "| index_a:", index_a+3, "| index_b:", index_b+3)
-        # "| index4:", index4+3, "| index5:", index5+3, "| index12:", index12+3)
-        print("label:", syllable, "| ", correct1, " | ", correct2, " | ", correct4, " |  ", correct_a, " |  ", correct_b,"\n")
-        # correct4, "| ", correct5, "| ",
-    print("Accuracy: ", score1*100/total, score2*100/total, score4*100/total, score_a*100/total, score_b*100/total,"\n")
 
+        total += 1
+        # print("label:", syllable, "| index1:", index1+3, "| index2:", index2+3, "| index4:", index4+3, "| index_a:", index_a+3, "| index_b:", index_b+3)
+        # print("label:", syllable, "| ", correct1, " | ", correct2, " | ", correct4, " |  ", correct_a, " |  ", correct_b,"\n")
+        print("label:", syllable, "| index2:", index2+3, "| index4:", index4+3, "| index_b:", index_b+3)
+        print("         | ", correct2, " | ", correct4, " |  ", correct_b,"\n")
+
+    print("\n\n\n###########################################################")
+    print("################## Classification Result ##################\n")
+
+    print("              | Feature 2 | Feature 4 | Combined Feature")
+    print(" -------------------------------------------------------")
+    print("   3Syllables | ", "%0.2f" %float(score2_3*100/25),"  |  ","%0.2f" %float(score4_3*100/25),"  |   ","%0.2f" %float(score_b_3*100/25))
+    print("   4Syllables |  ", "%0.2f" %float(score2_4*100/25),"  |  ","%0.2f" %float(score4_4*100/25),"  |   ","%0.2f" %float(score_b_4*100/25))
+    print("   5Syllables |  ", "%0.2f" %float(score2_5*100/25),"  |  ","%0.2f" %float(score4_5*100/25),"  |   ","%0.2f" %float(score_b_5*100/25))
+    print(" -------------------------------------------------------")
+    print("     Total    |  ", "%0.2f" %float(score2*100/total), "  |  ", "%0.2f" %float(score4*100/total),"  |   ", "%0.2f" %float(score_b*100/total))
+    print("\n   -> Total Accuracy of Combined Feature: ", "%0.2f" %float(score_b*100/total), "%")
+    print("\n###########################################################")
+
+
+#################################################################
+##   Useful Supplementary Fuctions
+#################################################################
 def prob_norm(p1, p2, p3):
     sum = p1 + p2 + p3
     return p1/sum, p2/sum, p3/sum
+
 
 def paddding(y, x):
     if y.size < 28000:
@@ -282,7 +328,9 @@ def paddding(y, x):
         #print("zero-padding")
         return new_y, new_x
 
+
 def speak_length(x):
+    """Parse the Audio Length with Threshold Short Time Energy"""
     start = 0
     end = 28000
     for i in range(x.size):
@@ -293,52 +341,53 @@ def speak_length(x):
                 end = i
     return end - start
 
+
 def audio_length(fs, x):
-    """Length of the audio source (sec)"""
+    """Length of the Audio Source (sec)"""
     length = x.shape[0]/float(fs)
-    # getnframes
     return length
 
 
 def normalizing(x, mean, var):
-    """Gaussian Normalize Function."""
+    """Gaussian Normalize Function"""
     return (1/math.sqrt(2*math.pi*var))*math.exp(-((x-mean)**2)/(2*var))
 
 
 def _sgn(x):
-  y = np.zeros_like(x)
-  y[np.where(x >= 0)] = 1.0
-  y[np.where(x < 0)] = -1.0
-  return y
+    """Numpy Sign Function"""
+    y = np.zeros_like(x)
+    y[np.where(x >= 0)] = 1.0
+    y[np.where(x < 0)] = -1.0
+    return y
 
 
 def stzcr(x, win):
-  """Compute short-time zero crossing rate."""
-  if isinstance(win, str):
-    win = scipy.signal.get_window(win, max(1, len(x) // 8))
-  win = 0.5 * win / len(win)
-  x1 = np.roll(x, 1)
-  x1[0] = 0.0
-  abs_diff = np.abs(_sgn(x) - _sgn(x1))
-  return scipy.signal.convolve(abs_diff, win, mode="same")
+    """Compute Short Time Zero-Crossing Rate"""
+    if isinstance(win, str):
+        win = scipy.signal.get_window(win, max(1, len(x) // 8))
+    win = 0.5 * win / len(win)
+    x1 = np.roll(x, 1)
+    x1[0] = 0.0
+    abs_diff = np.abs(_sgn(x) - _sgn(x1))
+    return scipy.signal.convolve(abs_diff, win, mode="same")
 
 
 def ste(x, win):
-  """Compute short-time energy."""
-  if isinstance(win, str):
-    win = scipy.signal.get_window(win, max(1, len(x) // 8))
-  win = win / len(win)
-  return scipy.signal.convolve(x**2, win**2, mode="same")
+    """Compute Short Time Energy"""
+    if isinstance(win, str):
+        win = scipy.signal.get_window(win, max(1, len(x) // 8))
+    win = win / len(win)
+    return scipy.signal.convolve(x**2, win**2, mode="same")
 
 
 def label_parse(file_dir):
-    """Parse the total number of syllables from file directory."""
+    """Parse the # Syllables from File Directory."""
     syllable = int(file_dir.split('/')[1][0])
     return syllable
 
 
 def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
-    """Show and Save graphs of Amplitude, Zero-crossing, and Energy"""
+    """Show and Save Graphs of Amplitude, Zero-Crossing, and Energy"""
     time = np.linspace(0, len(y)/sr, len(y)) # time axi
     fig = plt.figure(figsize=(18,5))
     # fig, ax1 = plt.subplots() # plot
@@ -368,4 +417,4 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
 if __name__ == '__main__':
     duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var = feature_extraction()
     classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var)
-    print("PA1 End")
+    print("-END-")
