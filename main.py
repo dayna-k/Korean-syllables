@@ -11,6 +11,7 @@ from scipy.io import wavfile
 # from librosa import *
 
 # feature: length, pitch
+n_window = 1000
 def feature_extraction():
     ## train
     DATA_PATH = "./PA1_DB/"
@@ -35,10 +36,8 @@ def feature_extraction():
     zc_all = [[], [], []]
     e_all = [[], [], []]
     mfcc_all = [[], [], []]
-    length_all = [[], [], []]
-    onset_r_all = [[], [], []]
-    onset_f_all = [[], [], []]
-    onset_all = [[], [], []]
+    zc_peak_dif_all = [[], [], []]
+    e_peak_dif_all = [[], [], []]
 
     #### train / learning
     for line_train in lines_train:
@@ -55,26 +54,21 @@ def feature_extraction():
 
         x = np.array(x, dtype = float)
         t = np.arange(len(x)) * (1.0 / fs)
-        #print(y, sr, fs, x)
         new_y, new_x = paddding(y, x)
 
-        ## feature extraction from the test data
-        # Find the short time zero crossing rate.
-        zc = stzcr(new_x, scipy.signal.get_window("boxcar", 2000))
-        # Find the short time energy.
-        e = ste(new_x, scipy.signal.get_window("hamming", 2000))
-        # mfcc.shape : ndarray 반환 으로 사용
-        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
-        parsed_length = speak_length(new_x)
-        oenv = librosa.onset.onset_strength(y=y, sr=sr)
-        # Detect events without backtracking
-        onset_raw = librosa.onset.onset_detect(onset_envelope=oenv,backtrack=False)
-        # print("onset_raw: ", onset_raw, onset_raw.size)
-        onset_frames = librosa.onset.onset_detect(y=y, sr=sr)
-        # print("onset_frame: ", onset_frames, onset_frames.size)
+        ## feature extraction from the train data
+        zc = stzcr(new_x, scipy.signal.get_window("boxcar", n_window)) # Find the short time zero crossing rate.
+        e = ste(new_x, scipy.signal.get_window("hamming", n_window)) # Find the short time energy.
+        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho') # mfcc.shape : ndarray 반환 으로 사용
 
-        # feature - length, zc, e, mfcc
+        parsed_length = speak_length(e)
+        zc_peak_dif = librosa.util.peak_pick(zc, 15, 15, 15, 15, 0.0025, 10)
+        # print(zc_peak_dif, list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
+        e_peak_dif = librosa.util.peak_pick(e, 15, 15, 15, 15, 0.1, 15)
+        #print(e_peak_dif)
+
+        # feature: length, zc, e, mfcc
         if int(syllable) == 3:
             count_3 += 1
             duration_all[0].append(y.size)
@@ -83,11 +77,8 @@ def feature_extraction():
             zc_all[0].append(zc)
             e_all[0].append(e)
             mfcc_all[0].append(mfcc)
-            length_all[0].append(l)
-            onset_r_all[0].append(onset_raw.size)
-            onset_f_all[0].append(onset_frames.size)
-            onset_all[0].append(onset_raw.size + onset_frames.size)
-
+            zc_peak_dif_all[0].append(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
+            e_peak_dif_all[0].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
 
         if int(syllable) == 4:
             count_4 += 1
@@ -97,10 +88,8 @@ def feature_extraction():
             zc_all[1].append(zc)
             e_all[1].append(e)
             mfcc_all[1].append(mfcc)
-            length_all[1].append(l)
-            onset_r_all[1].append(onset_raw.size)
-            onset_f_all[1].append(onset_frames.size)
-            onset_all[1].append(onset_raw.size + onset_frames.size)
+            zc_peak_dif_all[1].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
+            e_peak_dif_all[1].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
 
         if int(syllable) == 5:
             count_5 += 1
@@ -110,31 +99,21 @@ def feature_extraction():
             zc_all[2].append(zc)
             e_all[2].append(e)
             mfcc_all[2].append(mfcc)
-            length_all[2].append(l)
-            onset_r_all[2].append(onset_raw.size)
-            onset_f_all[2].append(onset_frames.size)
-            onset_all[2].append(onset_raw.size + onset_frames.size)
+            zc_peak_dif_all[2].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
+            e_peak_dif_all[2].append(list(e_peak_dif)[-1]-list(e_peak_dif)[0])
 
-        # print("length: ", audio_length(fs, x))
-        # print("zero crossing rate: ", zc.size, "\n", zc)
-        # print("short-time energy: ", e.size, "\n", e)
         # print("length: ", audio_length(fs, x), y.size, "\n") # audio_length(fs, x) / y.size : constant -> 둘 중 아무거나 선택
         show_graph(file_dir, file_id, syllable, sr, new_y, zc, e)
 
-    # print(lines)
     f_train.close()
     duration_avg = [np.mean(duration_all[0]), np.mean(duration_all[1]), np.mean(duration_all[2])]
     duration_var = [np.var(duration_all[0]), np.var(duration_all[1]), np.var(duration_all[2])] # 분산
     duration_parse_avg = [np.mean(duration_parse_all[0]), np.mean(duration_parse_all[1]), np.mean(duration_parse_all[2])]
     duration_parse_var = [np.var(duration_parse_all[0]), np.var(duration_parse_all[1]), np.var(duration_parse_all[2])] # 분산
-    # length_avg = [np.mean(length_all[0]), np.mean(length_all[1]), np.mean(length_all[2])]
-    # length_var = [np.var(length_all[0]), np.var(length_all[1]), np.var(length_all[2])]
-    onset_r_avg = [np.mean(onset_r_all[0]), np.mean(onset_r_all[1]), np.mean(onset_r_all[2])]
-    onset_r_var = [np.var(onset_r_all[0]), np.var(onset_r_all[1]), np.var(onset_r_all[2])]
-    onset_f_avg = [np.mean(onset_f_all[0]), np.mean(onset_f_all[1]), np.mean(onset_f_all[2])]
-    onset_f_var = [np.var(onset_f_all[0]), np.var(onset_f_all[1]), np.var(onset_f_all[2])]
-    onset_avg = [np.mean(onset_all[0]), np.mean(onset_all[1]), np.mean(onset_all[2])]
-    onset_var = [np.var(onset_all[0]), np.var(onset_all[1]), np.var(onset_all[2])]
+    zc_peak_dif_avg = [np.mean(zc_peak_dif_all[0]), np.mean(zc_peak_dif_all[1]), np.mean(zc_peak_dif_all[2])]
+    zc_peak_dif_var = [np.var(zc_peak_dif_all[0]), np.var(zc_peak_dif_all[1]), np.var(zc_peak_dif_all[2])]
+    e_peak_dif_avg = [np.mean(e_peak_dif_all[0]), np.mean(e_peak_dif_all[1]), np.mean(e_peak_dif_all[2])]
+    e_peak_dif_var = [np.var(e_peak_dif_all[0]), np.var(e_peak_dif_all[1]), np.var(e_peak_dif_all[2])]
 
 
     print("duration_avg: ", duration_avg)
@@ -149,46 +128,35 @@ def feature_extraction():
     print("duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
     print("duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
 
-    print("onset_r_avg: ", onset_r_avg)
-    print("onset_r_var: ", onset_r_var)
-    print("onset_r_3: ", min(onset_r_all[0]), max(onset_r_all[0]))
-    print("onset_r_4: ", min(onset_r_all[1]), max(onset_r_all[1]))
-    print("onset_r_5: ", min(onset_r_all[2]), max(onset_r_all[2]), "\n")
+    print("zc_peak_dif_avg: ", zc_peak_dif_avg)
+    print("zc_peak_dif_var: ", zc_peak_dif_var)
+    print("zc_peak_dif_3: ", min(zc_peak_dif_all[0]), max(zc_peak_dif_all[0]))
+    print("zc_peak_dif_4: ", min(zc_peak_dif_all[1]), max(zc_peak_dif_all[1]))
+    print("zc_peak_dif_5: ", min(zc_peak_dif_all[2]), max(zc_peak_dif_all[2]), "\n")
 
-    print("onset_f_avg: ", onset_f_avg)
-    print("onset_f_var: ", onset_f_var)
-    print("onset_f_3: ", min(onset_f_all[0]), max(onset_f_all[0]))
-    print("onset_f_4: ", min(onset_f_all[1]), max(onset_f_all[1]))
-    print("onset_f_5: ", min(onset_f_all[2]), max(onset_f_all[2]), "\n")
-
-    print("onset_avg: ", onset_avg)
-    print("onset_var: ", onset_var)
-    print("onset_3: ", min(onset_all[0]), max(onset_all[0]))
-    print("onset_4: ", min(onset_all[1]), max(onset_all[1]))
-    print("onset_5: ", min(onset_all[2]), max(onset_all[2]), "\n")
-    # print("length_avg: ", length_avg)
-    # print("length_var: ", length_var)
-    # print("length_3: ", min(length_all[0]), max(length_all[0]))
-    # print("length_4: ", min(length_all[1]), max(length_all[1]))
-    # print("length_5: ", min(length_all[2]), max(length_all[2]), "\n\n")
+    print("e_peak_dif_avg: ", e_peak_dif_avg)
+    print("e_peak_dif_var: ", e_peak_dif_var)
+    print("e_peak_dif_3: ", min(e_peak_dif_all[0]), max(e_peak_dif_all[0]))
+    print("e_peak_dif_4: ", min(e_peak_dif_all[1]), max(e_peak_dif_all[1]))
+    print("e_peak_dif_5: ", min(e_peak_dif_all[2]), max(e_peak_dif_all[2]), "\n")
 
     # show the distribution histogram of duration
     # plt.hist(duration_all[0], bins=20)
     # sns.distplot(duration_all[0], rug=True, kde=False, fit=sp.stats.norm)
     # plt.show()
 
-    return duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var
+    return duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var
 
 
-def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var):
+def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var):
     DATA_PATH = "./PA1_DB/"
     f_test = open(DATA_PATH+"test.txt", 'r')
     lines_test = f_test.readlines()
     score1, score2, score3, score4, score5 = 0, 0, 0, 0, 0
-    score12, score14, score15 = 0, 0, 0
+    score_a, score_b = 0, 0
     total = 0 # 75 samples
     correct1, correct2, correct3, correct4, correct5 = "", "", "", "", ""
-    correct12, correct14, correct15 = "", "", ""
+    correct_a, correct_b = "", ""
 
 
     for line_test in lines_test:
@@ -208,31 +176,28 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         t = np.arange(len(x)) * (1.0 / fs)
         new_y, new_x = paddding(y, x)
 
-        oenv = librosa.onset.onset_strength(y=y, sr=sr)
-        # Detect events without backtracking
-        onset_raw = librosa.onset.onset_detect(onset_envelope=oenv,backtrack=False)
-        # print("onset_raw: ", onset_raw, onset_raw.size)
-        onset_frames = librosa.onset.onset_detect(y=y, sr=sr)
-        # print("onset_frame: ", onset_frames, onset_frames.size)
-
         ## feature extraction from the test data
         # Find the short time zero crossing rate.
-        zc = stzcr(x, scipy.signal.get_window("boxcar", 2000))
+        zc = stzcr(new_x, scipy.signal.get_window("boxcar", n_window))
         # Find the short time energy.
-        e = ste(x, scipy.signal.get_window("hamming", 2000))
+        e = ste(new_x, scipy.signal.get_window("hamming", n_window))
         # mfcc.shape : ndarray 반환 으로 사용
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
-        parsed_length = speak_length(new_x)
+        mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
+        parsed_length = speak_length(e)
 
-        # length_dif = [abs(duration_avg[0]-y.size), abs(duration_avg[1]-y.size), abs(duration_avg[2]-y.size)]
-        # index = length_dif.index(min(length_dif))
+        # zc_peak_dif = librosa.util.peak_pick(zc, 15, 15, 15, 15, 0.0025, 10)
+        # print("zc_peak_dif: ", zc_peak_dif, zc_peak_dif.size, list(zc_peak_dif)[-1]-list(zc_peak_dif)[0])
+
+        e_peak_dif = librosa.util.peak_pick(e, 15, 15, 15, 15, 0.1, 15)
+        # print("e_peak_dif: ", e_peak_dif, e_peak_dif.size, list(e_peak_dif)[-1]-list(e_peak_dif)[0])
+
         p3 = normalizing(y.size, duration_avg[0], duration_var[0])
         p4 = normalizing(y.size, duration_avg[1], duration_var[1])
         p5 = normalizing(y.size, duration_avg[2], duration_var[2])
         a, b, c = prob_norm(p3, p4, p5)
         p_length = [a, b, c] # probability
         index1 = p_length.index(max(p_length))
-        print("p1: ", index1, max(p_length), p_length)
+        print("p1: ", index1+3, max(p_length), p_length)
         if(index1+3 == int(syllable)):
             score1 += 1
             correct1 = "correct"
@@ -244,113 +209,61 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         a, b, c = prob_norm(p3_2, p4_2, p5_2)
         p_length2 = [a, b, c]
         index2 = p_length2.index(max(p_length2))
-        print("p2: ", index2, max(p_length2), p_length2)
+        print("p2: ", index2+3, max(p_length2), p_length2)
         if(index2+3 == int(syllable)):
             score2 += 1
             correct2 = "correct"
         else: correct2 = " wrong "
 
-        p3_3 = normalizing(onset_raw.size, onset_r_avg[0], onset_r_var[0])
-        p4_3 = normalizing(onset_raw.size, onset_r_avg[1], onset_r_var[1])
-        p5_3 = normalizing(onset_raw.size, onset_r_avg[2], onset_r_var[2])
-        a, b, c = prob_norm(p3_3, p4_3, p5_3)
-        p_3 = [a, b, c] # probability
-        index3 = p_3.index(max(p_3))
-        print("p3: ", index3, max(p_3), p_3)
-        if(index3+3 == int(syllable)):
-            score3 += 1
-            correct3 = "correct"
-        else: correct3 = " wrong "
+        # p3_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[0], zc_peak_dif_var[0])
+        # p4_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[1], zc_peak_dif_var[1])
+        # p5_3 = normalizing(list(zc_peak_dif)[-1]-list(zc_peak_dif)[0], zc_peak_dif_avg[2], zc_peak_dif_var[2])
+        # a, b, c = prob_norm(p3_3, p4_3, p5_3)
+        # p_3 = [a, b, c] # probability
+        # index3 = p_3.index(max(p_3))
+        # # print("p3: ", index3+3, max(p_3), p_3)
+        # if(index3+3 == int(syllable)):
+        #     score3 += 1
+        #     correct3 = "correct"
+        # else: correct3 = " wrong "
 
-        p3_4 = normalizing(onset_frames.size, onset_f_avg[0], onset_f_var[0])
-        p4_4 = normalizing(onset_frames.size, onset_f_avg[1], onset_f_var[1])
-        p5_4 = normalizing(onset_frames.size, onset_f_avg[2], onset_f_var[2])
+        p3_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[0], e_peak_dif_var[0])
+        p4_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[1], e_peak_dif_var[1])
+        p5_4 = normalizing(list(e_peak_dif)[-1]-list(e_peak_dif)[0], e_peak_dif_avg[2], e_peak_dif_var[2])
         a, b, c = prob_norm(p3_4, p4_4, p5_4)
         p_4 = [a, b, c] # probability
-        #print("p4: ", p_4)
         index4 = p_4.index(max(p_4))
+        print("p4: ", index4+3, max(p_4), p_4)
         if(index4+3 == int(syllable)):
             score4 += 1
             correct4 = "correct"
         else: correct4 = " wrong "
 
-        p3_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[0], onset_var[0])
-        p4_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[1], onset_var[1])
-        p5_5 = normalizing(onset_raw.size + onset_frames.size, onset_avg[2], onset_var[2])
-        a, b, c = prob_norm(p3_5, p4_5, p5_5)
-        p_5 = [a, b, c] # probability
-        #print("p5: ", p_5)
-        index5 = p_5.index(max(p_5))
-        if(index5+3 == int(syllable)):
-            score5 += 1
-            correct5 = "correct"
-        else: correct5 = " wrong "
+        p_final = [p_length2[0]*p_4[0], p_length2[1]*p_4[1], p_length2[2]*p_4[2]]
+        index_a = p_final.index(max(p_final))
+        if(index_a+3 == int(syllable)):
+            score_a += 1
+            correct_a = "correct"
+        else: correct_a = " wrong "
 
-
-        # final control
-        # if index1 == index2:
-        #     index12 = index1
-        #     if index3 == index5 and index4 == index5:
-        #         index12 = (index1+index2+index3+index4)//4
-        # else:
-        #     index12 = (index1+index2+index3)//3
-        #
-        # # set outliers
-        # if ((len(list(onset_raw)) == 1 or len(list(onset_frames)) == 2) or len(list(onset_raw)) + len(list(onset_frames)) <= 4):
-        #     index12 = 0
-        #
-        # if (len(list(onset_frames)) >= 11 or len(list(onset_raw)) + len(list(onset_frames)) >= 16):
-        #     index12 = 2
-
-        p_final = [p_length2[0]*p_3[0], p_length2[1]*p_3[1], p_length2[2]*p_3[2]]
-        index12 = p_final.index(max(p_final))
-
-
-
-        # if (index1 < index3):
-        #     index12 = (index1+index3)//2
-        # if (index1 != index3):
-        #     if max(max(p_length2), max(p_3)) > 0.8:
-        #         if max(p_length2) > max(p_3):
-        #             index12 = index2
-        #         else:
-        #             index12 = index1
-
-        if ((len(list(onset_raw)) == 1 or len(list(onset_frames)) == 2) or len(list(onset_raw)) + len(list(onset_frames)) <= 4):
-            index12 = 0
-
-        if (len(list(onset_frames)) >= 11 or len(list(onset_raw)) + len(list(onset_frames)) >= 16):
-            index12 = 2
-        # if (index2 != index3)
-
-        if(index12+3 == int(syllable)):
-            score12 += 1
-            correct12 = "correct"
-        else: correct12 = " wrong "
-        # if index1 == index2:
-        #     index12 = index1
-        # if index3 == index4:
-        #     index34 = index2
-        #
-        # if index12 != 0 :
-        #     index_a = index12
-        # elif index34 != 0:
-
-
-        # p_sum = [p3*p3_2, p4*p4_2, p5*p5_2]
-        # index3 = p_sum.index(max(p_sum))
-        # if(index3+3 == int(syllable)):
-        #     score3 += 1
-        #     correct3 = "correct"
-        # else: correct3 = "wrong"
-
+        if index2 == index4:
+            index_b = index2
+        else:
+            if p_length2[index2] < p_4[index4]:
+                index_b = index4
+            else:
+                index_b = index2
+        if(index_b+3 == int(syllable)):
+            score_b += 1
+            correct_b = "correct"
+        else: correct_b = " wrong "
+        
         total += 1
-        print("label:", syllable, "| index1:", index1+3, "| index2:", index2+3,"| index3:", index3+3, "| index12:", index12+3)
+        print("label:", syllable, "| index1:", index1+3, "| index2:", index2+3, "| index4:", index4+3, "| index_a:", index_a+3, "| index_b:", index_b+3)
         # "| index4:", index4+3, "| index5:", index5+3, "| index12:", index12+3)
-        print("label:", syllable, "| ", correct1, " | ", correct2, " | ", correct3, " | ", correct12,"\n")
+        print("label:", syllable, "| ", correct1, " | ", correct2, " | ", correct4, " |  ", correct_a, " |  ", correct_b,"\n")
         # correct4, "| ", correct5, "| ",
-
-    print("Accuracy: ", score1*100/total, score2*100/total, score3*100/total, score4*100/total, score5*100/total, score12*100/total,"\n")
+    print("Accuracy: ", score1*100/total, score2*100/total, score4*100/total, score_a*100/total, score_b*100/total,"\n")
 
 def prob_norm(p1, p2, p3):
     sum = p1 + p2 + p3
@@ -453,6 +366,6 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
 
 
 if __name__ == '__main__':
-    duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var = feature_extraction()
-    classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, onset_r_avg, onset_r_var, onset_f_avg, onset_f_var, onset_avg, onset_var)
+    duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var = feature_extraction()
+    classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var, zc_peak_dif_avg, zc_peak_dif_var, e_peak_dif_avg, e_peak_dif_var)
     print("PA1 End")
