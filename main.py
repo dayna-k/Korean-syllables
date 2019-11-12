@@ -113,19 +113,19 @@ def feature_extraction():
     e_peak_dif_avg = [np.mean(e_peak_dif_all[0]), np.mean(e_peak_dif_all[1]), np.mean(e_peak_dif_all[2])]
     e_peak_dif_var = [np.var(e_peak_dif_all[0]), np.var(e_peak_dif_all[1]), np.var(e_peak_dif_all[2])]
 
-    print("\n\n\n###########################################################")
-    print("################ Feature Extraction Result ################\n")
+    print("\n\n\n#################################################################################")
+    print("########################### Feature Extraction Result ###########################\n")
     # print("duration_avg: ", duration_avg)
     # print("duration_var: ", duration_var)
     # print("duration_3: ", min(duration_all[0]), max(duration_all[0]))
     # print("duration_4: ", min(duration_all[1]), max(duration_all[1]))
     # print("duration_5: ", min(duration_all[2]), max(duration_all[2]), "\n")
-
-    print("duration_parse_avg: ", duration_parse_avg)
-    print("duration_parse_var: ", duration_parse_var)
-    print("duration_parse_3: ", min(duration_parse_all[0]), max(duration_parse_all[0]))
-    print("duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
-    print("duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
+    print(" Feature 2")
+    print(" duration_parse_avg: ", duration_parse_avg)
+    print(" duration_parse_var: ", duration_parse_var)
+    print(" duration_parse_3: ", min(duration_parse_all[0]), max(duration_parse_all[0]))
+    print(" duration_parse_4: ", min(duration_parse_all[1]), max(duration_parse_all[1]))
+    print(" duration_parse_5: ", min(duration_parse_all[2]), max(duration_parse_all[2]), "\n\n")
 
     # print("zc_peak_dif_avg: ", zc_peak_dif_avg)
     # print("zc_peak_dif_var: ", zc_peak_dif_var)
@@ -133,13 +133,14 @@ def feature_extraction():
     # print("zc_peak_dif_4: ", min(zc_peak_dif_all[1]), max(zc_peak_dif_all[1]))
     # print("zc_peak_dif_5: ", min(zc_peak_dif_all[2]), max(zc_peak_dif_all[2]), "\n")
 
-    print("e_peak_dif_avg: ", e_peak_dif_avg)
-    print("e_peak_dif_var: ", e_peak_dif_var)
-    print("e_peak_dif_3: ", min(e_peak_dif_all[0]), max(e_peak_dif_all[0]))
-    print("e_peak_dif_4: ", min(e_peak_dif_all[1]), max(e_peak_dif_all[1]))
-    print("e_peak_dif_5: ", min(e_peak_dif_all[2]), max(e_peak_dif_all[2]), "\n")
+    print(" Feature 4")
+    print(" e_peak_dif_avg: ", e_peak_dif_avg)
+    print(" e_peak_dif_var: ", e_peak_dif_var)
+    print(" e_peak_dif_3: ", min(e_peak_dif_all[0]), max(e_peak_dif_all[0]))
+    print(" e_peak_dif_4: ", min(e_peak_dif_all[1]), max(e_peak_dif_all[1]))
+    print(" e_peak_dif_5: ", min(e_peak_dif_all[2]), max(e_peak_dif_all[2]), "\n")
 
-    print("###########################################################\n\n\n")
+    print("#################################################################################\n\n\n")
 
     # show the distribution histogram of duration
     # plt.hist(duration_all[0], bins=20)
@@ -160,6 +161,8 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
 
     DATA_PATH = "./PA1_DB/"
     f_test = open(DATA_PATH+"test.txt", 'r')
+    # modify above line to grade (put the new file name instead of test.txt)
+    # ex. f_test = open(DATA_PATH+"new_test.txt", 'r'
     lines_test = f_test.readlines()
 
     # Variables
@@ -225,7 +228,7 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         a, b, c = prob_norm(p3_2, p4_2, p5_2)
         p_length2 = [a, b, c]
         index2 = p_length2.index(max(p_length2))
-        print("p2: ", index2+3, max(p_length2), p_length2)
+        # print("p2: ", index2+3, max(p_length2), p_length2)
         if(index2+3 == int(syllable)):
             score2 += 1
             correct2 = "correct"
@@ -254,7 +257,7 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         a, b, c = prob_norm(p3_4, p4_4, p5_4)
         p_4 = [a, b, c] # probability
         index4 = p_4.index(max(p_4))
-        print("p4: ", index4+3, max(p_4), p_4)
+        # print("p4: ", index4+3, max(p_4), p_4)
         if(index4+3 == int(syllable)):
             score4 += 1
             correct4 = "correct"
@@ -293,29 +296,31 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var,
         print("label:", syllable, "| index2:", index2+3, "| index4:", index4+3, "| index_b:", index_b+3)
         print("         | ", correct2, " | ", correct4, " |  ", correct_b,"\n")
 
-    print("\n\n\n###########################################################")
-    print("################## Classification Result ##################\n")
+    print("\n\n\n#################################################################################")
+    print("############################# Classification Result #############################\n")
 
-    print("              | Feature 2 | Feature 4 | Combined Feature")
-    print(" -------------------------------------------------------")
-    print("   3Syllables | ", "%0.2f" %float(score2_3*100/25),"  |  ","%0.2f" %float(score4_3*100/25),"  |   ","%0.2f" %float(score_b_3*100/25))
-    print("   4Syllables |  ", "%0.2f" %float(score2_4*100/25),"  |  ","%0.2f" %float(score4_4*100/25),"  |   ","%0.2f" %float(score_b_4*100/25))
-    print("   5Syllables |  ", "%0.2f" %float(score2_5*100/25),"  |  ","%0.2f" %float(score4_5*100/25),"  |   ","%0.2f" %float(score_b_5*100/25))
-    print(" -------------------------------------------------------")
-    print("     Total    |  ", "%0.2f" %float(score2*100/total), "  |  ", "%0.2f" %float(score4*100/total),"  |   ", "%0.2f" %float(score_b*100/total))
-    print("\n   -> Total Accuracy of Combined Feature: ", "%0.2f" %float(score_b*100/total), "%")
-    print("\n###########################################################")
+    print("                    | Feature 2 | Feature 4 | Combined Feature")
+    print("       -------------------------------------------------------")
+    print("         3Syllables | ", "%0.2f" %float(score2_3*100/25),"  |  ","%0.2f" %float(score4_3*100/25),"  |   ","%0.2f" %float(score_b_3*100/25))
+    print("         4Syllables |  ", "%0.2f" %float(score2_4*100/25),"  |  ","%0.2f" %float(score4_4*100/25),"  |   ","%0.2f" %float(score_b_4*100/25))
+    print("         5Syllables |  ", "%0.2f" %float(score2_5*100/25),"  |  ","%0.2f" %float(score4_5*100/25),"  |   ","%0.2f" %float(score_b_5*100/25))
+    print("       -------------------------------------------------------")
+    print("           Total    |  ", "%0.2f" %float(score2*100/total), "  |  ", "%0.2f" %float(score4*100/total),"  |   ", "%0.2f" %float(score_b*100/total))
+    print("\n         -> Total Accuracy of Combined Feature: ", "%0.2f" %float(score_b*100/total), "%")
+    print("\n#################################################################################")
 
 
 #################################################################
 ##   Useful Supplementary Fuctions
 #################################################################
 def prob_norm(p1, p2, p3):
+    """Normalize Probability to Make Sum as 1"""
     sum = p1 + p2 + p3
     return p1/sum, p2/sum, p3/sum
 
 
 def paddding(y, x):
+    """Zero-Padding Function to Make Constant Audio Length"""
     if y.size < 28000:
         n_minus_y = 28000 - y.size
         # print(n_minus_y, type(y), y[0])
@@ -324,8 +329,6 @@ def paddding(y, x):
 
         new_x = [0]*(n_minus_y//2) + list(x) + [0]*(28000 - y.size - n_minus_y//2)
         new_x = np.array(new_x)
-        #print(new_x, type(new_x), new_x.shape)
-        #print("zero-padding")
         return new_y, new_x
 
 
