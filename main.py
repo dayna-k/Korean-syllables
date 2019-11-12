@@ -64,7 +64,12 @@ def feature_extraction():
         mfcc = librosa.feature.mfcc(y=new_y, sr=sr, n_mfcc=20, dct_type=2, norm='ortho')
 
         parsed_length = speak_length(new_x)
-
+        oenv = librosa.onset.onset_strength(y=y, sr=sr)
+        # Detect events without backtracking
+        onset_raw = librosa.onset.onset_detect(onset_envelope=oenv,backtrack=False)
+        # print("onset_raw: ", onset_raw, onset_raw.size)
+        onset_frames = librosa.onset.onset_detect(y=y, sr=sr)
+        # print("onset_frame: ", onset_frames, onset_frames.size)
 
         # feature - length, zc, e, mfcc
         if int(syllable) == 3:
@@ -165,6 +170,13 @@ def classify(duration_avg, duration_var, duration_parse_avg, duration_parse_var)
         x = np.array(x, dtype = float)
         t = np.arange(len(x)) * (1.0 / fs)
         new_y, new_x = paddding(y, x)
+
+        oenv = librosa.onset.onset_strength(y=y, sr=sr)
+        # Detect events without backtracking
+        onset_raw = librosa.onset.onset_detect(onset_envelope=oenv,backtrack=False)
+        # print("onset_raw: ", onset_raw, onset_raw.size)
+        onset_frames = librosa.onset.onset_detect(y=y, sr=sr)
+        # print("onset_frame: ", onset_frames, onset_frames.size)
 
         ## feature extraction from the test data
         # Find the short time zero crossing rate.
@@ -299,8 +311,8 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
     ax3.set_xlabel("Time [s]") # x 축
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
-    plt.show(block=False)
-    plt.pause(0.1)
+    #plt.show(block=False)
+    #plt.pause(0.1)
     plt.close()
 
 
