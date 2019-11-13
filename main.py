@@ -411,8 +411,8 @@ def show_graph(file_dir, file_id, syllable, sr, y, zc, e):
     ax3.set_xlabel("Time [s]") # x 축
 
     plt.savefig("./img/"+file_dir.split('/')[1]+"_"+file_dir.split('/')[2]+"_"+file_id+'.png')
-    #plt.show(block=False)
-    #plt.pause(0.1)
+    plt.show(block=False)
+    plt.pause(0.1)
     plt.close()
 
 
